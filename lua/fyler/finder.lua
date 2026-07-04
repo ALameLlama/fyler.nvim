@@ -883,6 +883,7 @@ function Finder:open()
           mapping.opts or {},
           { buffer = self.buf_id }
         )
+        opts.desc = opts.desc or mapping.desc
         if type(mapping.action) == 'function' then
           vim.keymap.set(mode, key, function() mapping.action(self, mapping.args) end, opts)
         elseif type(mapping.action) == 'string' then
@@ -961,6 +962,63 @@ function Finder:open()
     self:follow({ target_path = target_path, force = true })
   else
     self:refresh({ force = true, recursive = true })
+  end
+end
+
+function Finder:show_help()
+  local mappings = self.opts.mappings and self.opts.mappings.n or {}
+  local keys = vim
+    .iter(mappings)
+    :filter(function(_, mapping) return type(mapping) == 'table' and not mapping.disabled end)
+    :map(function(key) return key end)
+    :totable()
+  table.sort(keys)
+
+  local key_width = 3
+  for _, key in ipairs(keys) do
+    key_width = math.max(key_width, vim.fn.strdisplaywidth(key))
+  end
+
+  local lines = { 'Fyler help', '', string.format('%-' .. key_width .. 's  %s', 'Key', 'Action') }
+  for _, key in ipairs(keys) do
+    local mapping = mappings[key]
+    local action = type(mapping.action) == 'string' and mapping.action or 'custom'
+    local description = mapping.desc or mapping.description or action
+    table.insert(lines, string.format('%-' .. key_width .. 's  %s', key, description))
+  end
+
+  local width = 20
+  for _, line in ipairs(lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(line))
+  end
+  width = math.min(width + 2, math.max(vim.o.columns - 4, 20))
+  local height = math.min(#lines, math.max(vim.o.lines - 4, 1))
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(buf, 'fyler-help')
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  util.buffer_set_option(buf, 'bufhidden', 'wipe')
+  util.buffer_set_option(buf, 'modifiable', false)
+  util.buffer_set_option(buf, 'filetype', 'fyler_help')
+
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = 'editor',
+    style = 'minimal',
+    border = 'single',
+    title = ' Fyler Help',
+    title_pos = 'center',
+    width = width,
+    height = height,
+    row = math.floor((vim.o.lines - height) / 2),
+    col = math.floor((vim.o.columns - width) / 2),
+  })
+  util.window_set_option(win, 'wrap', false)
+
+  local close = function()
+    if vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
+  end
+  for _, key in ipairs({ '?', 'q', '<Esc>', '<C-c>' }) do
+    vim.keymap.set('n', key, close, { buffer = buf, noremap = true, nowait = true, silent = true })
   end
 end
 
@@ -1241,6 +1299,8 @@ M.window_goto_suitable = function(instance, path)
     vim.api.nvim_command('leftabove vsplit')
   elseif direction == 'BELOW' then
     vim.api.nvim_command('leftabove split')
+  elseif direction == 'LEFT' then
+    vim.api.nvim_command('leftabove vsplit')
   else
     vim.api.nvim_command('rightbelow vsplit')
   end

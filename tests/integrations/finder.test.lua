@@ -137,6 +137,29 @@ T['Finder with kind']['can close finder'] = function(kind)
   n.expect_screenshot()
 end
 
+T['Finder with kind']['can show help'] = function(kind)
+  local tmpdir = helper.get_tmpdir('data', { 'a-file' })
+  n.fwd_lua('require("fyler").setup')({})
+  n.fwd_lua('require("fyler").open')({ kind = kind, root_path = tmpdir })
+  vim.uv.sleep(10)
+  n.type_keys('?')
+  vim.uv.sleep(10)
+
+  local help = n.lua_get([[({ function()
+    local bufs = vim.api.nvim_list_bufs()
+    for _, buf in ipairs(bufs) do
+      if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == 'fyler_help' then
+        return table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), '\n')
+      end
+    end
+    return ''
+  end })[1]()]])
+
+  helper.expect.match(help, 'Fyler help')
+  helper.expect.match(help, '%?%s+Show help')
+  helper.expect.match(help, '<CR>%s+Open')
+end
+
 T['Finder with kind']['can toggle indent guides'] = function(kind)
   local tmpdir = helper.get_tmpdir('data', { 'a-dir/', 'a-dir/aa-file' })
   n.fwd_lua('require("fyler").setup')({})
