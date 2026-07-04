@@ -244,6 +244,7 @@ H.build_fs_entry_ui = function(item)
   local icon_char, icon_hl = integration_icon.get(item.type, item.path, entry_state)
   local indent = item.depth > 0 and string.rep('  ', item.depth) or ''
   local id_part = string.format('/%0' .. math.ceil(math.log10(state.store_next_id)) .. 'd ', item.id)
+  local name_hl = item.type == 'directory' and 'FylerDirectoryName' or 'FylerNormal'
   local children = {}
   local name_col = 0
 
@@ -260,11 +261,33 @@ H.build_fs_entry_ui = function(item)
 
   table.insert(children, { tag = 'text', value = id_part })
   name_col = name_col + #id_part
-  table.insert(children, {
-    tag = 'text',
-    value = item.name,
-    hl = item.type == 'directory' and 'FylerDirectoryName' or 'FylerNormal',
-  })
+  if item.match_positions and #item.match_positions > 0 then
+    local matched = {}
+    for _, position in ipairs(item.match_positions) do
+      matched[position] = true
+    end
+
+    local start = 1
+    while start <= #item.name do
+      local is_matched = matched[start]
+      local finish = start
+      while finish + 1 <= #item.name and matched[finish + 1] == is_matched do
+        finish = finish + 1
+      end
+      table.insert(children, {
+        tag = 'text',
+        value = item.name:sub(start, finish),
+        hl = is_matched and 'FylerSearchMatch' or name_hl,
+      })
+      start = finish + 1
+    end
+  else
+    table.insert(children, {
+      tag = 'text',
+      value = item.name,
+      hl = name_hl,
+    })
+  end
 
   return children, name_col
 end
@@ -489,6 +512,7 @@ H.new_instance = function(opts)
     _refresh_count = nil,
     _pending_refresh = nil,
     _id_to_line = nil,
+    search_query = nil,
     cache = {
       ui = {
         indent_guides = opts.ui.indent_guides,
@@ -686,6 +710,11 @@ function Finder:follow(args)
 end
 
 function Finder:mutate()
+  if self.search_query then
+    vim.notify('Clear search before applying file changes', vim.log.levels.WARN, { title = 'Fyler.nvim' })
+    return
+  end
+
   if not vim.api.nvim_get_option_value('modified', { buf = self.buf_id }) then return end
 
   local id_to_path = {}
@@ -966,6 +995,7 @@ end
 
 function Finder:refresh(args)
   args = args or {}
+  local search_query = self.search_query
   if self._is_refreshing then
     self._pending_refresh = H.merge_refresh_args(self._pending_refresh, args)
     return
@@ -981,18 +1011,29 @@ function Finder:refresh(args)
 
   self.state:update(
     target_path,
-    { recursive = args.recursive, force = args.force },
+    { recursive = args.recursive, force = args.force, all = search_query ~= nil },
     vim.schedule_wrap(function()
       if not util.buffer_is_valid(self.buf_id) then
         self._is_refreshing = false
         return
       end
 
-      local flat = self.state:to_lines(self.cache.ui.hidden_items)
+      if search_query ~= self.search_query then
+        H.finish_refresh(self)
+        return
+      end
+
+      local flat, best_id
+      if search_query then
+        flat, best_id = self.state:to_search_lines(search_query, self.cache.ui.hidden_items)
+      else
+        flat = self.state:to_lines(self.cache.ui.hidden_items)
+      end
       local undolevels = vim.bo[self.buf_id].undolevels
       vim.bo[self.buf_id].undolevels = -1
 
       local visible, hl_ns, lines = H.render_tree(self, flat)
+      if best_id then self._view.lnum = self._id_to_line[best_id] or 1 end
 
       vim.bo[self.buf_id].undolevels = undolevels
 
@@ -1007,6 +1048,17 @@ end
 
 function Finder:resize() util.window_resize(self.win_id, self.opts) end
 
+function Finder:search()
+  vim.ui.input({ prompt = 'Fyler search: ', default = self.search_query or '' }, function(query)
+    if query == nil then return end
+
+    query = vim.trim(query)
+    self.search_query = query ~= '' and query or nil
+    self:refresh({ recursive = true })
+  end)
+end
+
+---@param args { close: boolean|nil, tabedit: boolean|nil, split: boolean|nil, vsplit: boolean|nil, pick: boolean|nil }|nil
 function Finder:select(args)
   args = args or {}
 
