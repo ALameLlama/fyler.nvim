@@ -296,6 +296,9 @@ local default_config = {
         args = { cursor = true },
         desc = 'Enter directory under cursor',
       },
+      ['/'] = {
+        action = 'search',
+      },
       ['<BS>'] = {
         action = 'shrink',
         args = { parent = true },
