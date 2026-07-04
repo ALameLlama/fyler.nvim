@@ -108,6 +108,7 @@ CONFIGURATION ~
             ['<CR>'] = {
               action = 'select',
               args = { close = true, pick = false },
+              desc = 'Open and close',
             },
           },
         },
@@ -123,6 +124,7 @@ CONFIGURATION ~
             ['<CR>'] = {
               action = 'select',
               args = { close = true, pick = false },
+              desc = 'Open and close',
             },
           },
         },
@@ -148,6 +150,10 @@ CONFIGURATION ~
           action = 'visit',
           args = { cursor = true },
           desc = 'Enter directory under cursor',
+        },
+        ['?'] = {
+          action = 'show_help',
+          desc = 'Show help',
         },
         ['<BS>'] = {
           action = 'shrink',
@@ -327,7 +333,8 @@ apply. Format for defining a mapping is as follows:
     -- Builtin mapping
     ['<key>'] = {
       action = '<builtin_action_name>',
-      args = { <builtin_action_args> }
+      args = { <builtin_action_args> },
+      desc = '<description>'
     }
   }
   {

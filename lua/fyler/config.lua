@@ -172,7 +172,8 @@ local M = {}
 ---     -- Builtin mapping
 ---     ['<key>'] = {
 ---       action = '<builtin_action_name>',
----       args = { <builtin_action_args> }
+---       args = { <builtin_action_args> },
+---       desc = '<description>'
 ---     }
 ---   }
 ---   {
@@ -255,6 +256,7 @@ local default_config = {
           ['<CR>'] = {
             action = 'select',
             args = { close = true, pick = false },
+            desc = 'Open and close',
           },
         },
       },
@@ -270,6 +272,7 @@ local default_config = {
           ['<CR>'] = {
             action = 'select',
             args = { close = true, pick = false },
+            desc = 'Open and close',
           },
         },
       },
@@ -295,6 +298,10 @@ local default_config = {
         action = 'visit',
         args = { cursor = true },
         desc = 'Enter directory under cursor',
+      },
+      ['?'] = {
+        action = 'show_help',
+        desc = 'Show help',
       },
       ['<BS>'] = {
         action = 'shrink',
