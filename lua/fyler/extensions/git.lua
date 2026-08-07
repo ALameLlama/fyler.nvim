@@ -195,7 +195,7 @@ extensions.register({
     config.extensions.git = vim.tbl_deep_extend('force', { icons = vim.deepcopy(default_icons), inline = true }, opts)
   end,
   hooks = {
-    finder_refresh_post = function(inst, visible, _, lines, args)
+    finder_refresh_post = function(inst, visible, _, _, args)
       local cfg = require('fyler.config').DATA.extensions.git
       if not cfg.enabled then return end
 
@@ -203,7 +203,6 @@ extensions.register({
       local current_count = refresh_count
       local git_ns = vim.api.nvim_create_namespace('FylerGitBuf' .. inst.buf_id)
 
-      local gc = H.git_col(lines)
       local function apply(i, item, stat)
         local icon, hl = H.get_icon(stat, cfg.icons)
         if not hl then return end
@@ -224,7 +223,7 @@ extensions.register({
               git_ns,
               i - 1,
               0,
-              { virt_text = { { icon, hl } }, virt_text_win_col = gc, hl_mode = 'combine' }
+              { virt_text = { { icon, hl } }, virt_text_pos = 'right_align', hl_mode = 'combine' }
             )
           end
         end
