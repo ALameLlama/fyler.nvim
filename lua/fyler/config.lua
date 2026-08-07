@@ -302,6 +302,9 @@ local default_config = {
       ['?'] = {
         action = 'show_help',
         desc = 'Show help',
+      ['/'] = {
+        action = 'search',
+        desc = 'Search for files',
       },
       ['<BS>'] = {
         action = 'shrink',
