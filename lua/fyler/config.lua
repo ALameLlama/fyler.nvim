@@ -303,6 +303,10 @@ local default_config = {
         action = 'show_help',
         desc = 'Show help',
       },
+      ['/'] = {
+        action = 'search',
+        desc = 'Search for files and directories',
+      },
       ['<BS>'] = {
         action = 'shrink',
         args = { parent = true },
